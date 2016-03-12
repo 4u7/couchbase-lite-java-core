@@ -46,7 +46,7 @@ public class RemoteRequest implements Runnable {
     public static final int MIN_JSON_LENGTH_TO_COMPRESS = 100;
 
     protected ScheduledExecutorService workExecutor;
-    protected final HttpClientFactory clientFactory;
+    protected HttpClient httpClient;
     protected String method;
     protected URL url;
     protected Object body;
@@ -55,6 +55,7 @@ public class RemoteRequest implements Runnable {
     protected RemoteRequestCompletionBlock onCompletion;
     protected RemoteRequestCompletionBlock onPostCompletion;
     protected HttpUriRequest request;
+    protected Database db;
 
     protected Map<String, Object> requestHeaders;
 
@@ -67,12 +68,18 @@ public class RemoteRequest implements Runnable {
     private String str = null;
 
     public RemoteRequest(ScheduledExecutorService workExecutor,
-                         HttpClientFactory clientFactory, String method, URL url,
-                         Object body, Database db, Map<String, Object> requestHeaders, RemoteRequestCompletionBlock onCompletion) {
-        this.clientFactory = clientFactory;
+                         HttpClient httpClient,
+                         String method,
+                         URL url,
+                         Object body,
+                         Database db,
+                         Map<String, Object> requestHeaders,
+                         RemoteRequestCompletionBlock onCompletion) {
+        this.httpClient = httpClient;
         this.method = method;
         this.url = url;
         this.body = body;
+        this.db = db;
         this.onCompletion = onCompletion;
         this.workExecutor = workExecutor;
         this.requestHeaders = requestHeaders;
@@ -82,33 +89,13 @@ public class RemoteRequest implements Runnable {
 
     @Override
     public void run() {
-        Log.v(Log.TAG_SYNC, "%s: RemoteRequest run() called, url: %s", this, url);
-        HttpClient httpClient = clientFactory.getHttpClient();
-        try {
-            preemptivelySetAuthCredentials(httpClient);
-
-            request.addHeader("Accept", "multipart/related, application/json");
-            request.addHeader("User-Agent", Manager.getUserAgent());
-            request.addHeader("Accept-Encoding", "gzip, deflate");
-
-            addRequestHeaders(request);
-
-            setBody(request);
-
-            executeRequest(httpClient, request);
-
-            // shutdown connection manager (close all connections)
-            httpClient.getConnectionManager().shutdown();
-
-            Log.v(Log.TAG_SYNC, "%s: RemoteRequest run() finished, url: %s", this, url);
-
-        } catch (Throwable e) {
-            Log.e(Log.TAG_SYNC, "RemoteRequest.run() exception: %s", e);
-        } finally {
-            // shutdown connection manager (close all connections)
-            if (httpClient != null && httpClient.getConnectionManager() != null)
-                httpClient.getConnectionManager().shutdown();
-        }
+        preemptivelySetAuthCredentials(httpClient);
+        request.addHeader("Accept", "multipart/related, application/json");
+        request.addHeader("User-Agent", Manager.getUserAgent());
+        request.addHeader("Accept-Encoding", "gzip, deflate");
+        addRequestHeaders(request);
+        setBody(request);
+        executeRequest(httpClient, request);
     }
 
     public void abort() {
@@ -172,7 +159,8 @@ public class RemoteRequest implements Runnable {
                 return;
             }
 
-            Log.v(Log.TAG_SYNC, "%s: RemoteRequest calling httpClient.execute, client: %s url: %s", this, httpClient, url);
+            Log.v(Log.TAG_SYNC, "%s: RemoteRequest calling httpClient.execute, client: %s url: %s",
+                    this, httpClient, url);
 
             response = httpClient.execute(requestParam);
 
@@ -182,7 +170,8 @@ public class RemoteRequest implements Runnable {
             try {
                 if (httpClient instanceof DefaultHttpClient) {
                     DefaultHttpClient defaultHttpClient = (DefaultHttpClient)httpClient;
-                    this.clientFactory.addCookies(defaultHttpClient.getCookieStore().getCookies());
+                    db.getManager().getDefaultHttpClientFactory().addCookies(
+                            defaultHttpClient.getCookieStore().getCookies());
                 }
             } catch (Exception e) {
                 Log.e(Log.TAG_REMOTE_REQUEST, "Unable to add in cookies to global store", e);
@@ -192,7 +181,8 @@ public class RemoteRequest implements Runnable {
 
             if (status.getStatusCode() >= 300) {
                 if (!dontLog404) {
-                    Log.e(Log.TAG_REMOTE_REQUEST, "Got error status: %d for %s.  Reason: %s", status.getStatusCode(), url, status.getReasonPhrase());
+                    Log.e(Log.TAG_REMOTE_REQUEST, "Got error status: %d for %s.  Reason: %s",
+                            status.getStatusCode(), url, status.getReasonPhrase());
                 }
                 error = new HttpResponseException(status.getStatusCode(), status.getReasonPhrase());
                 respondWithResult(fullBody, error, response);

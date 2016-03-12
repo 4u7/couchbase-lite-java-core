@@ -23,7 +23,6 @@ import com.couchbase.lite.util.URIUtils;
 import com.couchbase.lite.util.Utils;
 
 import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.HttpResponseException;
 
 import java.net.URL;
@@ -99,8 +98,6 @@ public class PullerInternal extends ReplicationInternal implements ChangeTracker
         initDownloadsToInsert();
 
         startChangeTracker();
-
-        // start replicator ..
     }
 
     private void initDownloadsToInsert() {
@@ -134,7 +131,7 @@ public class PullerInternal extends ReplicationInternal implements ChangeTracker
 
         Log.d(TAG, "%s: starting ChangeTracker with since=%s mode=%s",
                 this, lastSequence, changeTrackerMode);
-        changeTracker = new ChangeTracker(remote, changeTrackerMode, true, lastSequence, this);
+        changeTracker = new ChangeTracker(remote, httpClient, changeTrackerMode, true, lastSequence, this);
         changeTracker.setAuthenticator(getAuthenticator());
         Log.d(TAG, "%s: started ChangeTracker %s", this, changeTracker);
 
@@ -293,7 +290,7 @@ public class PullerInternal extends ReplicationInternal implements ChangeTracker
         try {
 
             dl = new BulkDownloader(workExecutor,
-                    clientFactory,
+                    httpClient,
                     remote,
                     bulkRevs,
                     db,
@@ -766,11 +763,6 @@ public class PullerInternal extends ReplicationInternal implements ChangeTracker
     @InterfaceAudience.Private
     public String getLastSequence() {
         return lastSequence;
-    }
-
-    @Override
-    public HttpClient getHttpClient() {
-        return clientFactory.getHttpClient();
     }
 
     @Override

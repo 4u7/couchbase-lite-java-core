@@ -31,6 +31,7 @@ import com.github.oxo42.stateless4j.transitions.Transition;
 
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
 import org.apache.http.client.HttpResponseException;
 import org.apache.http.cookie.Cookie;
 import org.apache.http.impl.cookie.BasicClientCookie2;
@@ -86,6 +87,7 @@ abstract class ReplicationInternal implements BlockingQueueListener {
     protected Database db;
     protected URL remote;
     protected HttpClientFactory clientFactory;
+    protected HttpClient httpClient;
     protected String lastSequence;
     protected Authenticator authenticator;
     protected String filterName;
@@ -129,7 +131,8 @@ abstract class ReplicationInternal implements BlockingQueueListener {
     /**
      * Constructor
      */
-    ReplicationInternal(Database db, URL remote,
+    ReplicationInternal(Database db,
+                        URL remote,
                         HttpClientFactory clientFactory,
                         ScheduledExecutorService workExecutor,
                         Replication.Lifecycle lifecycle,
@@ -141,6 +144,7 @@ abstract class ReplicationInternal implements BlockingQueueListener {
         this.db = db;
         this.remote = remote;
         this.clientFactory = clientFactory;
+        this.httpClient = clientFactory.getHttpClient();
         this.workExecutor = workExecutor;
         this.lifecycle = lifecycle;
 
@@ -167,6 +171,12 @@ abstract class ReplicationInternal implements BlockingQueueListener {
         initializeStateMachine();
 
         this.retryCount = 0;
+    }
+
+    @Override
+    protected void finalize() throws Throwable {
+        close();
+        super.finalize();
     }
 
     /**
@@ -302,6 +312,10 @@ abstract class ReplicationInternal implements BlockingQueueListener {
                     Replication.DEFAULT_MAX_TIMEOUT_FOR_SHUTDOWN,
                     Replication.DEFAULT_MAX_TIMEOUT_FOR_SHUTDOWN);
         }
+
+        // shutdown ConnectionManager of HttpClient
+        if (httpClient != null && httpClient.getConnectionManager() != null)
+            httpClient.getConnectionManager().shutdown();
     }
 
     protected void initAuthorizer() {
@@ -561,7 +575,7 @@ abstract class ReplicationInternal implements BlockingQueueListener {
                 RemoteRequestRetry.RemoteRequestType.REMOTE_REQUEST,
                 remoteRequestExecutor,
                 workExecutor,
-                clientFactory,
+                httpClient,
                 method,
                 url,
                 body,
@@ -610,7 +624,7 @@ abstract class ReplicationInternal implements BlockingQueueListener {
                 RemoteRequestRetry.RemoteRequestType.REMOTE_MULTIPART_REQUEST,
                 remoteRequestExecutor,
                 workExecutor,
-                clientFactory,
+                httpClient,
                 method,
                 url,
                 multiPartEntity,
@@ -640,7 +654,7 @@ abstract class ReplicationInternal implements BlockingQueueListener {
                     RemoteRequestRetry.RemoteRequestType.REMOTE_MULTIPART_DOWNLOADER_REQUEST,
                     remoteRequestExecutor,
                     workExecutor,
-                    clientFactory,
+                    httpClient,
                     method,
                     url,
                     body,
@@ -664,10 +678,6 @@ abstract class ReplicationInternal implements BlockingQueueListener {
      */
     protected Database getLocalDatabase() {
         return db;
-    }
-
-    protected void setLocalDatabase(Database db) {
-        this.db = db;
     }
 
     /**
@@ -1641,7 +1651,6 @@ abstract class ReplicationInternal implements BlockingQueueListener {
         cookie.setSecure(secure);
         List<Cookie> cookies = Collections.singletonList((Cookie) cookie);
         this.clientFactory.addCookies(cookies);
-
     }
 
     /**
@@ -1649,10 +1658,6 @@ abstract class ReplicationInternal implements BlockingQueueListener {
      */
     public void deleteCookie(String name) {
         this.clientFactory.deleteCookie(name);
-    }
-
-    protected HttpClientFactory getClientFactory() {
-        return clientFactory;
     }
 
     /**

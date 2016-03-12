@@ -755,11 +755,6 @@ public class Replication implements ReplicationInternal.ChangeListener, NetworkR
     }
 
     @InterfaceAudience.Private
-    protected HttpClientFactory getClientFactory() {
-        return replicationInternal.getClientFactory();
-    }
-
-    @InterfaceAudience.Private
     protected String buildRelativeURLString(String relativePath) {
         return replicationInternal.buildRelativeURLString(relativePath);
     }

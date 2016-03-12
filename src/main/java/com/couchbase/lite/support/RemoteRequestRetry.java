@@ -7,6 +7,7 @@ import com.couchbase.lite.util.Utils;
 import com.couchbase.org.apache.http.entity.mime.MultipartEntity;
 
 import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpUriRequest;
 
 import java.io.IOException;
@@ -40,7 +41,7 @@ public class RemoteRequestRetry<T> implements CustomFuture<T> {
     protected ScheduledExecutorService workExecutor;
     protected ExecutorService requestExecutor;  // must have more than one thread
 
-    protected final HttpClientFactory clientFactory;
+    protected HttpClient httpClient;
     protected String method;
     protected URL url;
     protected Object body;
@@ -89,7 +90,7 @@ public class RemoteRequestRetry<T> implements CustomFuture<T> {
     public RemoteRequestRetry(RemoteRequestType requestType,
                               ScheduledExecutorService requestExecutor,
                               ScheduledExecutorService workExecutor,
-                              HttpClientFactory clientFactory,
+                              HttpClient httpClient,
                               String method,
                               URL url,
                               Object body,
@@ -99,7 +100,7 @@ public class RemoteRequestRetry<T> implements CustomFuture<T> {
 
         this.requestType = requestType;
         this.requestExecutor = requestExecutor;
-        this.clientFactory = clientFactory;
+        this.httpClient = httpClient;
         this.method = method;
         this.url = url;
         this.body = body;
@@ -151,7 +152,7 @@ public class RemoteRequestRetry<T> implements CustomFuture<T> {
             case REMOTE_MULTIPART_REQUEST:
                 request = new RemoteMultipartRequest(
                         workExecutor,
-                        clientFactory,
+                        httpClient,
                         method,
                         url,
                         (MultipartEntity) body,
@@ -162,7 +163,7 @@ public class RemoteRequestRetry<T> implements CustomFuture<T> {
             case REMOTE_MULTIPART_DOWNLOADER_REQUEST:
                 request = new RemoteMultipartDownloaderRequest(
                         workExecutor,
-                        clientFactory,
+                        httpClient,
                         method,
                         url,
                         body,
@@ -173,7 +174,7 @@ public class RemoteRequestRetry<T> implements CustomFuture<T> {
             default:
                 request = new RemoteRequest(
                         workExecutor,
-                        clientFactory,
+                        httpClient,
                         method,
                         url,
                         body,

@@ -4,7 +4,6 @@ import com.couchbase.lite.Database;
 import com.couchbase.lite.Manager;
 import com.couchbase.lite.internal.InterfaceAudience;
 import com.couchbase.lite.internal.RevisionInternal;
-import com.couchbase.lite.support.HttpClientFactory;
 import com.couchbase.lite.support.MultipartDocumentReader;
 import com.couchbase.lite.support.MultipartReader;
 import com.couchbase.lite.support.MultipartReaderDelegate;
@@ -50,7 +49,7 @@ public class BulkDownloader extends RemoteRequest implements MultipartReaderDele
     private BulkDownloaderDocumentBlock _onDocument;
 
     public BulkDownloader(ScheduledExecutorService workExecutor,
-                          HttpClientFactory clientFactory,
+                          HttpClient httpClient,
                           URL dbURL,
                           List<RevisionInternal> revs,
                           Database database,
@@ -59,7 +58,7 @@ public class BulkDownloader extends RemoteRequest implements MultipartReaderDele
                           RemoteRequestCompletionBlock onCompletion) throws Exception {
 
         super(workExecutor,
-                clientFactory,
+                httpClient,
                 "POST",
                 new URL(buildRelativeURLString(dbURL, "/_bulk_get?revs=true&attachments=true")),
                 helperMethod(revs, database),
@@ -74,22 +73,15 @@ public class BulkDownloader extends RemoteRequest implements MultipartReaderDele
 
     @Override
     public void run() {
-        HttpClient httpClient = clientFactory.getHttpClient();
-        try {
-            preemptivelySetAuthCredentials(httpClient);
-            request.addHeader("Content-Type", "application/json");
-            request.addHeader("Accept", "multipart/related");
-            request.addHeader("User-Agent", Manager.getUserAgent());
-            request.addHeader("X-Accept-Part-Encoding", "gzip");
-            request.addHeader("Accept-Encoding", "gzip, deflate");
-            addRequestHeaders(request);
-            setBody(request);
-            executeRequest(httpClient, request);
-        } finally {
-            // shutdown connection manager (close all connections)
-            if (httpClient != null && httpClient.getConnectionManager() != null)
-                httpClient.getConnectionManager().shutdown();
-        }
+        preemptivelySetAuthCredentials(httpClient);
+        request.addHeader("Content-Type", "application/json");
+        request.addHeader("Accept", "multipart/related");
+        request.addHeader("User-Agent", Manager.getUserAgent());
+        request.addHeader("X-Accept-Part-Encoding", "gzip");
+        request.addHeader("Accept-Encoding", "gzip, deflate");
+        addRequestHeaders(request);
+        setBody(request);
+        executeRequest(httpClient, request);
     }
 
     public String toString() {
@@ -114,7 +106,8 @@ public class BulkDownloader extends RemoteRequest implements MultipartReaderDele
                 // add in cookies to global store
                 if (httpClient instanceof DefaultHttpClient) {
                     DefaultHttpClient defaultHttpClient = (DefaultHttpClient) httpClient;
-                    clientFactory.addCookies(defaultHttpClient.getCookieStore().getCookies());
+                    db.getManager().getDefaultHttpClientFactory().addCookies(
+                            defaultHttpClient.getCookieStore().getCookies());
                 }
             } catch (Exception e) {
                 Log.e(Log.TAG_REMOTE_REQUEST, "Unable to add in cookies to global store", e);

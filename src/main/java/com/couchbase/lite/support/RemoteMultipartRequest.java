@@ -17,39 +17,34 @@ public class RemoteMultipartRequest extends RemoteRequest {
     private MultipartEntity multiPart = null;
 
     public RemoteMultipartRequest(ScheduledExecutorService workExecutor,
-                                  HttpClientFactory clientFactory, String method, URL url,
-                                  MultipartEntity multiPart, Database db, Map<String, Object> requestHeaders, RemoteRequestCompletionBlock onCompletion) {
-        super(workExecutor, clientFactory, method, url, null, db, requestHeaders, onCompletion);
+                                  HttpClient httpClient,
+                                  String method,
+                                  URL url,
+                                  MultipartEntity multiPart,
+                                  Database db,
+                                  Map<String, Object> requestHeaders,
+                                  RemoteRequestCompletionBlock onCompletion) {
+        super(workExecutor, httpClient, method, url, null, db, requestHeaders, onCompletion);
         this.multiPart = multiPart;
     }
 
     @Override
     public void run() {
-        HttpClient httpClient = clientFactory.getHttpClient();
-        try {
-            preemptivelySetAuthCredentials(httpClient);
-
-            HttpUriRequest request = null;
-            if ("PUT".equalsIgnoreCase(method)) {
-                HttpPut putRequest = new HttpPut(url.toExternalForm());
-                putRequest.setEntity(multiPart);
-                request = putRequest;
-            } else if ("POST".equalsIgnoreCase(method)) {
-                HttpPost postRequest = new HttpPost(url.toExternalForm());
-                postRequest.setEntity(multiPart);
-                request = postRequest;
-            } else {
-                throw new IllegalArgumentException("Invalid request method: " + method);
-            }
-
-            addRequestHeaders(request);
-            request.addHeader("Accept", "*/*");
-
-            executeRequest(httpClient, request);
-        } finally {
-            // shutdown connection manager (close all connections)
-            if (httpClient != null && httpClient.getConnectionManager() != null)
-                httpClient.getConnectionManager().shutdown();
+        preemptivelySetAuthCredentials(httpClient);
+        HttpUriRequest request = null;
+        if ("PUT".equalsIgnoreCase(method)) {
+            HttpPut putRequest = new HttpPut(url.toExternalForm());
+            putRequest.setEntity(multiPart);
+            request = putRequest;
+        } else if ("POST".equalsIgnoreCase(method)) {
+            HttpPost postRequest = new HttpPost(url.toExternalForm());
+            postRequest.setEntity(multiPart);
+            request = postRequest;
+        } else {
+            throw new IllegalArgumentException("Invalid request method: " + method);
         }
+        addRequestHeaders(request);
+        request.addHeader("Accept", "*/*");
+        executeRequest(httpClient, request);
     }
 }

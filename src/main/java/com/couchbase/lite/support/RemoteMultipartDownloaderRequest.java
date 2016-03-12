@@ -23,31 +23,26 @@ import java.util.zip.GZIPInputStream;
 
 public class RemoteMultipartDownloaderRequest extends RemoteRequest {
 
-    private Database db;
-
     public RemoteMultipartDownloaderRequest(ScheduledExecutorService workExecutor,
-                                            HttpClientFactory clientFactory, String method, URL url,
-                                            Object body, Database db, Map<String, Object> requestHeaders, RemoteRequestCompletionBlock onCompletion) {
-        super(workExecutor, clientFactory, method, url, body, db, requestHeaders, onCompletion);
-        this.db = db;
+                                            HttpClient httpClient,
+                                            String method,
+                                            URL url,
+                                            Object body,
+                                            Database db,
+                                            Map<String, Object> requestHeaders,
+                                            RemoteRequestCompletionBlock onCompletion) {
+        super(workExecutor, httpClient, method, url, body, db, requestHeaders, onCompletion);
     }
 
     @Override
     public void run() {
-        HttpClient httpClient = clientFactory.getHttpClient();
-        try {
-            preemptivelySetAuthCredentials(httpClient);
-            request.addHeader("Accept", "multipart/related, application/json");
-            request.addHeader("X-Accept-Part-Encoding", "gzip");
-            request.addHeader("User-Agent", Manager.getUserAgent());
-            request.addHeader("Accept-Encoding", "gzip, deflate");
-            addRequestHeaders(request);
-            executeRequest(httpClient, request);
-        } finally {
-            // shutdown connection manager (close all connections)
-            if (httpClient != null && httpClient.getConnectionManager() != null)
-                httpClient.getConnectionManager().shutdown();
-        }
+        preemptivelySetAuthCredentials(httpClient);
+        request.addHeader("Accept", "multipart/related, application/json");
+        request.addHeader("X-Accept-Part-Encoding", "gzip");
+        request.addHeader("User-Agent", Manager.getUserAgent());
+        request.addHeader("Accept-Encoding", "gzip, deflate");
+        addRequestHeaders(request);
+        executeRequest(httpClient, request);
     }
 
     private static final int BUF_LEN = 1024;
@@ -68,7 +63,8 @@ public class RemoteMultipartDownloaderRequest extends RemoteRequest {
                 // add in cookies to global store
                 if (httpClient instanceof DefaultHttpClient) {
                     DefaultHttpClient defaultHttpClient = (DefaultHttpClient)httpClient;
-                    this.clientFactory.addCookies(defaultHttpClient.getCookieStore().getCookies());
+                    db.getManager().getDefaultHttpClientFactory().addCookies(
+                            defaultHttpClient.getCookieStore().getCookies());
                 }
             } catch (Exception e) {
                 Log.e(Log.TAG_REMOTE_REQUEST, "Unable to add in cookies to global store", e);
