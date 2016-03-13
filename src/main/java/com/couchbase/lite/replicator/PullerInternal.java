@@ -290,6 +290,7 @@ public class PullerInternal extends ReplicationInternal implements ChangeTracker
         try {
 
             dl = new BulkDownloader(workExecutor,
+                    clientFactory,
                     httpClient,
                     remote,
                     bulkRevs,

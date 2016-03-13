@@ -1,6 +1,5 @@
 package com.couchbase.lite.support;
 
-import com.couchbase.lite.Database;
 import com.couchbase.org.apache.http.entity.mime.MultipartEntity;
 
 import org.apache.http.client.HttpClient;
@@ -17,14 +16,14 @@ public class RemoteMultipartRequest extends RemoteRequest {
     private MultipartEntity multiPart = null;
 
     public RemoteMultipartRequest(ScheduledExecutorService workExecutor,
+                                  HttpClientFactory clientFactory,
                                   HttpClient httpClient,
                                   String method,
                                   URL url,
                                   MultipartEntity multiPart,
-                                  Database db,
                                   Map<String, Object> requestHeaders,
                                   RemoteRequestCompletionBlock onCompletion) {
-        super(workExecutor, httpClient, method, url, null, db, requestHeaders, onCompletion);
+        super(workExecutor, clientFactory, httpClient, method, url, null, requestHeaders, onCompletion);
         this.multiPart = multiPart;
     }
 

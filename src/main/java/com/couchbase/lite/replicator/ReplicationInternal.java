@@ -575,6 +575,7 @@ abstract class ReplicationInternal implements BlockingQueueListener {
                 RemoteRequestRetry.RemoteRequestType.REMOTE_REQUEST,
                 remoteRequestExecutor,
                 workExecutor,
+                clientFactory,
                 httpClient,
                 method,
                 url,
@@ -624,6 +625,7 @@ abstract class ReplicationInternal implements BlockingQueueListener {
                 RemoteRequestRetry.RemoteRequestType.REMOTE_MULTIPART_REQUEST,
                 remoteRequestExecutor,
                 workExecutor,
+                clientFactory,
                 httpClient,
                 method,
                 url,
@@ -654,6 +656,7 @@ abstract class ReplicationInternal implements BlockingQueueListener {
                     RemoteRequestRetry.RemoteRequestType.REMOTE_MULTIPART_DOWNLOADER_REQUEST,
                     remoteRequestExecutor,
                     workExecutor,
+                    clientFactory,
                     httpClient,
                     method,
                     url,
@@ -1650,7 +1653,7 @@ abstract class ReplicationInternal implements BlockingQueueListener {
         cookie.setExpiryDate(expirationDate);
         cookie.setSecure(secure);
         List<Cookie> cookies = Collections.singletonList((Cookie) cookie);
-        this.clientFactory.addCookies(cookies);
+        clientFactory.addCookies(cookies);
     }
 
     /**

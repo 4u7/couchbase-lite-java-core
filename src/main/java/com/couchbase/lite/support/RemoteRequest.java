@@ -1,6 +1,5 @@
 package com.couchbase.lite.support;
 
-import com.couchbase.lite.Database;
 import com.couchbase.lite.Manager;
 import com.couchbase.lite.auth.Authenticator;
 import com.couchbase.lite.auth.AuthenticatorImpl;
@@ -46,6 +45,8 @@ public class RemoteRequest implements Runnable {
     public static final int MIN_JSON_LENGTH_TO_COMPRESS = 100;
 
     protected ScheduledExecutorService workExecutor;
+    // NOTE: this is only required for storing cookie. consider better solution
+    protected HttpClientFactory clientFactory;
     protected HttpClient httpClient;
     protected String method;
     protected URL url;
@@ -55,7 +56,6 @@ public class RemoteRequest implements Runnable {
     protected RemoteRequestCompletionBlock onCompletion;
     protected RemoteRequestCompletionBlock onPostCompletion;
     protected HttpUriRequest request;
-    protected Database db;
 
     protected Map<String, Object> requestHeaders;
 
@@ -68,18 +68,18 @@ public class RemoteRequest implements Runnable {
     private String str = null;
 
     public RemoteRequest(ScheduledExecutorService workExecutor,
+                         HttpClientFactory clientFactory,
                          HttpClient httpClient,
                          String method,
                          URL url,
                          Object body,
-                         Database db,
                          Map<String, Object> requestHeaders,
                          RemoteRequestCompletionBlock onCompletion) {
+        this.clientFactory = clientFactory;
         this.httpClient = httpClient;
         this.method = method;
         this.url = url;
         this.body = body;
-        this.db = db;
         this.onCompletion = onCompletion;
         this.workExecutor = workExecutor;
         this.requestHeaders = requestHeaders;
@@ -155,7 +155,9 @@ public class RemoteRequest implements Runnable {
 
             if (requestParam.isAborted()) {
                 Log.v(Log.TAG_SYNC, "%s: RemoteRequest has already been aborted", this);
-                respondWithResult(fullBody, new Exception(String.format("%s: Request %s has been aborted", this, requestParam)), response);
+                respondWithResult(fullBody,
+                        new Exception(String.format("%s: Request %s has been aborted", this, requestParam)),
+                        response);
                 return;
             }
 
@@ -170,8 +172,7 @@ public class RemoteRequest implements Runnable {
             try {
                 if (httpClient instanceof DefaultHttpClient) {
                     DefaultHttpClient defaultHttpClient = (DefaultHttpClient)httpClient;
-                    db.getManager().getDefaultHttpClientFactory().addCookies(
-                            defaultHttpClient.getCookieStore().getCookies());
+                    clientFactory.addCookies( defaultHttpClient.getCookieStore().getCookies());
                 }
             } catch (Exception e) {
                 Log.e(Log.TAG_REMOTE_REQUEST, "Unable to add in cookies to global store", e);

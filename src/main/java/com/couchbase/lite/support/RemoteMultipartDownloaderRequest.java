@@ -23,7 +23,10 @@ import java.util.zip.GZIPInputStream;
 
 public class RemoteMultipartDownloaderRequest extends RemoteRequest {
 
+    protected Database db;
+
     public RemoteMultipartDownloaderRequest(ScheduledExecutorService workExecutor,
+                                            HttpClientFactory clientFactory,
                                             HttpClient httpClient,
                                             String method,
                                             URL url,
@@ -31,7 +34,8 @@ public class RemoteMultipartDownloaderRequest extends RemoteRequest {
                                             Database db,
                                             Map<String, Object> requestHeaders,
                                             RemoteRequestCompletionBlock onCompletion) {
-        super(workExecutor, httpClient, method, url, body, db, requestHeaders, onCompletion);
+        super(workExecutor, clientFactory, httpClient, method, url, body, requestHeaders, onCompletion);
+        this.db = db;
     }
 
     @Override
@@ -63,8 +67,7 @@ public class RemoteMultipartDownloaderRequest extends RemoteRequest {
                 // add in cookies to global store
                 if (httpClient instanceof DefaultHttpClient) {
                     DefaultHttpClient defaultHttpClient = (DefaultHttpClient)httpClient;
-                    db.getManager().getDefaultHttpClientFactory().addCookies(
-                            defaultHttpClient.getCookieStore().getCookies());
+                    clientFactory.addCookies(defaultHttpClient.getCookieStore().getCookies());
                 }
             } catch (Exception e) {
                 Log.e(Log.TAG_REMOTE_REQUEST, "Unable to add in cookies to global store", e);

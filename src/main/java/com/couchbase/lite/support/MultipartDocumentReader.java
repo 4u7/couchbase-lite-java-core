@@ -22,12 +22,12 @@ public class MultipartDocumentReader implements MultipartReaderDelegate {
     private ByteArrayBuffer jsonBuffer;
     private boolean jsonCompressed;
     private Map<String, Object> document;
-    private Database database;
+    private Database db;
     private Map<String, BlobStoreWriter> attachmentsByName;
     private Map<String, BlobStoreWriter> attachmentsByMd5Digest;
 
-    public MultipartDocumentReader(Database database) {
-        this.database = database;
+    public MultipartDocumentReader(Database db) {
+        this.db = db;
     }
 
     public Map<String, Object> getDocumentProperties() {
@@ -201,8 +201,8 @@ public class MultipartDocumentReader implements MultipartReaderDelegate {
             throw new IllegalStateException(msg);
         }
 
-        // hand over the (uninstalled) blobs to the database to remember:
-        database.rememberAttachmentWritersForDigests(attachmentsByMd5Digest);
+        // hand over the (uninstalled) blobs to the db to remember:
+        db.rememberAttachmentWritersForDigests(attachmentsByMd5Digest);
 
     }
 
@@ -212,7 +212,7 @@ public class MultipartDocumentReader implements MultipartReaderDelegate {
         if (document == null) {
             startJSONBufferWithHeaders(headers);
         } else {
-            curAttachment = database.getAttachmentWriter();
+            curAttachment = db.getAttachmentWriter();
 
             String contentDisposition = headers.get("Content-Disposition");
             if (contentDisposition != null && contentDisposition.startsWith("attachment; filename=")) {

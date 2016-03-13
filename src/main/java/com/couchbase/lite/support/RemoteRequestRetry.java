@@ -41,6 +41,8 @@ public class RemoteRequestRetry<T> implements CustomFuture<T> {
     protected ScheduledExecutorService workExecutor;
     protected ExecutorService requestExecutor;  // must have more than one thread
 
+    // NOTE: this is only required for storing cookie. consider better solution
+    protected HttpClientFactory clientFactory;
     protected HttpClient httpClient;
     protected String method;
     protected URL url;
@@ -90,6 +92,7 @@ public class RemoteRequestRetry<T> implements CustomFuture<T> {
     public RemoteRequestRetry(RemoteRequestType requestType,
                               ScheduledExecutorService requestExecutor,
                               ScheduledExecutorService workExecutor,
+                              HttpClientFactory clientFactory,
                               HttpClient httpClient,
                               String method,
                               URL url,
@@ -100,6 +103,7 @@ public class RemoteRequestRetry<T> implements CustomFuture<T> {
 
         this.requestType = requestType;
         this.requestExecutor = requestExecutor;
+        this.clientFactory = clientFactory;
         this.httpClient = httpClient;
         this.method = method;
         this.url = url;
@@ -152,17 +156,18 @@ public class RemoteRequestRetry<T> implements CustomFuture<T> {
             case REMOTE_MULTIPART_REQUEST:
                 request = new RemoteMultipartRequest(
                         workExecutor,
+                        clientFactory,
                         httpClient,
                         method,
                         url,
                         (MultipartEntity) body,
-                        db,
                         requestHeaders,
                         onCompletionInner);
                 break;
             case REMOTE_MULTIPART_DOWNLOADER_REQUEST:
                 request = new RemoteMultipartDownloaderRequest(
                         workExecutor,
+                        clientFactory,
                         httpClient,
                         method,
                         url,
@@ -174,11 +179,11 @@ public class RemoteRequestRetry<T> implements CustomFuture<T> {
             default:
                 request = new RemoteRequest(
                         workExecutor,
+                        clientFactory,
                         httpClient,
                         method,
                         url,
                         body,
-                        db,
                         requestHeaders,
                         onCompletionInner
                 );
@@ -371,7 +376,6 @@ public class RemoteRequestRetry<T> implements CustomFuture<T> {
                 break;
 
         }
-
     }
 
     public void setDontLog404(boolean dontLog404) {

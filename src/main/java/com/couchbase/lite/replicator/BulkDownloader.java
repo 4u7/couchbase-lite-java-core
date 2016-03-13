@@ -4,6 +4,7 @@ import com.couchbase.lite.Database;
 import com.couchbase.lite.Manager;
 import com.couchbase.lite.internal.InterfaceAudience;
 import com.couchbase.lite.internal.RevisionInternal;
+import com.couchbase.lite.support.HttpClientFactory;
 import com.couchbase.lite.support.MultipartDocumentReader;
 import com.couchbase.lite.support.MultipartReader;
 import com.couchbase.lite.support.MultipartReaderDelegate;
@@ -49,24 +50,25 @@ public class BulkDownloader extends RemoteRequest implements MultipartReaderDele
     private BulkDownloaderDocumentBlock _onDocument;
 
     public BulkDownloader(ScheduledExecutorService workExecutor,
+                          HttpClientFactory clientFactory,
                           HttpClient httpClient,
                           URL dbURL,
                           List<RevisionInternal> revs,
-                          Database database,
+                          Database db,
                           Map<String, Object> requestHeaders,
                           BulkDownloaderDocumentBlock onDocument,
                           RemoteRequestCompletionBlock onCompletion) throws Exception {
 
         super(workExecutor,
+                clientFactory,
                 httpClient,
                 "POST",
                 new URL(buildRelativeURLString(dbURL, "/_bulk_get?revs=true&attachments=true")),
-                helperMethod(revs, database),
-                database,
+                helperMethod(revs, db),
                 requestHeaders,
                 onCompletion);
 
-        db = database;
+        this.db = db;
         _onDocument = onDocument;
 
     }
@@ -106,8 +108,7 @@ public class BulkDownloader extends RemoteRequest implements MultipartReaderDele
                 // add in cookies to global store
                 if (httpClient instanceof DefaultHttpClient) {
                     DefaultHttpClient defaultHttpClient = (DefaultHttpClient) httpClient;
-                    db.getManager().getDefaultHttpClientFactory().addCookies(
-                            defaultHttpClient.getCookieStore().getCookies());
+                    clientFactory.addCookies(defaultHttpClient.getCookieStore().getCookies());
                 }
             } catch (Exception e) {
                 Log.e(Log.TAG_REMOTE_REQUEST, "Unable to add in cookies to global store", e);
